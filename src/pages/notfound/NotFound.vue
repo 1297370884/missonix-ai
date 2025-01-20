@@ -24,4 +24,4 @@
 import { RouterLink } from 'vue-router'
 </script>
 
-<style></style>
+<style scoped></style>
