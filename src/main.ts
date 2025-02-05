@@ -24,9 +24,22 @@ import '@/assets/css/responsive.css'
 
 // import './assets/main.css'
 
+import * as ElementPlusIconsVue from '@element-plus/icons-vue'
+
+// 添加Element Plus样式
+import 'element-plus/dist/index.css'
+import ElementPlus from 'element-plus'
+
 const app = createApp(App)
 
 // app.use(createPinia())
 app.use(router)
+
+for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
+  app.component(key, component)
+}
+
+// 在应用配置中添加
+app.use(ElementPlus)
 
 app.mount('#app')
