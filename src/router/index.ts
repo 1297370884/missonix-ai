@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import HomeIndex from '@/pages/index/HomeIndex.vue'
-import PricingPage from '@/pages/pricing/PricngPage.vue'
+import HomeIndex from '@/views/index/HomeIndex.vue'
+import PricingPage from '@/views/pricing/PricngPage.vue'
+import ChatPage from '@/views/chat/ChatViews.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -20,12 +21,12 @@ const router = createRouter({
     {
       path: '/404',
       name: 'NotFound',
-      component: () => import('@/pages/notfound/NotFound.vue'),
+      component: () => import('@/views/notfound/NotFound.vue'),
       meta: { hideNavbar: false, hideFooter: false }, // 显示导航栏和页脚
     },
     {
       path: '/login',
-      component: () => import('@/pages/auth/AuthLayout.vue'),
+      component: () => import('@/views/auth/AuthLayout.vue'),
       meta: {
         hideNavbar: true,
         hideFooter: true,
@@ -63,7 +64,7 @@ const router = createRouter({
     },
     {
       path: '/register',
-      component: () => import('@/pages/auth/AuthLayout.vue'),
+      component: () => import('@/views/auth/AuthLayout.vue'),
       meta: {
         hideNavbar: true,
         hideFooter: true,
@@ -80,6 +81,15 @@ const router = createRouter({
           },
         },
       ],
+    },
+    {
+      path: '/chat',
+      name: 'chat',
+      component: ChatPage,
+      meta: {
+        hideNavbar: true,
+        hideFooter: true,
+      },
     },
     // 其他路由...
   ],

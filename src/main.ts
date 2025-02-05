@@ -1,4 +1,5 @@
 import { createApp } from 'vue'
+import { createPinia } from 'pinia'
 // import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
@@ -27,19 +28,23 @@ import '@/assets/css/responsive.css'
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 
 // 添加Element Plus样式
-import 'element-plus/dist/index.css'
 import ElementPlus from 'element-plus'
+import 'element-plus/dist/index.css'
+import { MdPreview } from 'md-editor-v3'
+import 'md-editor-v3/lib/style.css'
 
 const app = createApp(App)
 
-// app.use(createPinia())
+// 在应用配置中添加
+app.use(ElementPlus)
+
+app.use(createPinia())
 app.use(router)
 
 for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
   app.component(key, component)
 }
 
-// 在应用配置中添加
-app.use(ElementPlus)
+app.component('MdPreview', MdPreview)
 
 app.mount('#app')

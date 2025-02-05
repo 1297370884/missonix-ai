@@ -46,13 +46,12 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import axios from 'axios'
 import EmailVerification from '@/components/common/EmailVerification.vue'
-import type { FormInstance, FormRules } from 'element-plus'
+import type { FormRules } from 'element-plus'
+import { useUserStore } from '@/stores/user'
 
-const router = useRouter()
+const userStore = useUserStore()
 
 const form = ref({
   email: '',
@@ -61,12 +60,7 @@ const form = ref({
   confirmPassword: '',
 })
 
-// const areaCode = ref('86')
 const agreement = ref(true)
-
-// const isPhoneValid = computed(() => {
-//   return /^1[3-9]\d{9}$/.test(form.value.phone)
-// })
 
 const validatePass2 = (_rule: unknown, value: string, callback: (error?: Error) => void) => {
   if (value !== form.value.password) {
@@ -109,27 +103,16 @@ const handleRegister = () => {
     }
 
     try {
-      const response = await axios.post(
-        '/api/users/register/verify',
-        {
-          email: form.value.email,
-          code: form.value.code,
-          password: form.value.password,
-        },
-        {
-          withCredentials: true,
-        },
-      )
-
-      if (response.data.code === 200) {
-        ElMessage.success('注册成功')
-        router.push('/login')
-      } else {
-        ElMessage.error(response.data.message || '注册失败')
+      const success = await userStore.register({
+        email: form.value.email,
+        code: form.value.code,
+        password: form.value.password,
+      })
+      if (success) {
+        ElMessage.success('注册成功，即将跳转到首页')
       }
-    } catch (err) {
-      console.error('注册失败:', err)
-      ElMessage.error('注册失败，请稍后重试')
+    } catch (error) {
+      ElMessage.error('注册失败，请检查输入信息')
     }
   })
 }

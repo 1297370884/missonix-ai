@@ -31,19 +31,17 @@
 <script setup lang="ts" name="LoginIndex">
 import { ref } from 'vue'
 import EmailVerificationLogin from '@/components/common/EmailVerificationLogin.vue'
-import axios from 'axios'
-import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { useUserStore } from '@/stores/user'
 
+const userStore = useUserStore()
+const formRef = ref()
 const form = ref({
   email: '',
   code: '',
 })
 
-const router = useRouter()
-
-const handleLogin = () => {
-  // 添加表单引用校验
+const handleLogin = async () => {
   if (!formRef.value) return
 
   formRef.value.validate(async (valid: boolean) => {
@@ -53,49 +51,19 @@ const handleLogin = () => {
     }
 
     try {
-      const response = await axios.post(
-        '/api/users/login_by_email',
-        {
-          email: form.value.email,
-          code: form.value.code,
-        },
-        {
-          withCredentials: true,
-          timeout: 10000, // 添加超时设置
-        },
-      )
+      const success = await userStore.loginbyemail({
+        email: form.value.email,
+        code: form.value.code,
+      })
 
-      if (response.data.code === 200) {
+      if (success) {
         ElMessage.success('登录成功')
-        router.push('/')
-      } else {
-        ElMessage.error(response.data.message || '登录失败')
-        console.error('登录失败响应:', response.data)
       }
     } catch (err) {
-      console.error('登录失败:', err)
-      if (err.code === 'ECONNABORTED') {
-        ElMessage.error('请求超时，请检查网络连接')
-      } else if (err.response) {
-        // 处理HTTP状态码错误
-        const status = err.response.status
-        const errorMessages: { [key: number]: string } = {
-          400: '请求参数错误',
-          401: '验证码错误',
-          404: '邮箱未注册',
-          429: '尝试次数过多',
-          500: '服务器内部错误',
-        }
-        ElMessage.error(errorMessages[status] || `请求失败 (${status})`)
-      } else {
-        ElMessage.error('网络连接异常')
-      }
+      // 错误处理已在store完成
     }
   })
 }
-
-// 添加表单引用
-const formRef = ref()
 
 const loginWithWechat = () => {
   console.log('微信登录按钮点击')

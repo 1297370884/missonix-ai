@@ -5,7 +5,7 @@
       <router-link to="/register" class="tab-item">注册</router-link>
     </div>
 
-    <el-form :model="form" :rules="currentRules" class="login-form">
+    <el-form :model="form" :rules="currentRules" class="login-form" ref="formRef">
       <!-- 动态登录方式 -->
       <template v-if="!isSMSLogin">
         <!-- 手机号输入 -->
@@ -21,6 +21,7 @@
             type="password"
             placeholder="请输入密码"
             show-password
+            @keyup.enter="handleLogin"
           />
         </el-form-item>
       </template>
@@ -56,18 +57,16 @@
 <script setup lang="ts" name="LoginIndex">
 import { ref, computed } from 'vue'
 import SMSVerification from '@/components/common/SMSVerification.vue'
-import { useRouter } from 'vue-router'
-import axios from 'axios'
 import { ElMessage } from 'element-plus'
-
-const router = useRouter()
+import { useUserStore } from '@/stores/user'
+const userStore = useUserStore()
 
 const isSMSLogin = ref(false)
 const form = ref({
   account: '',
   phone: '',
   password: '',
-  captcha: '',
+  // captcha: '',
 })
 
 // 添加加载状态
@@ -115,68 +114,31 @@ const toggleLoginMethod = () => {
   if (isSMSLogin.value) {
     form.value.password = ''
   } else {
-    form.value.captcha = ''
+    // form.value.captcha = ''
   }
 }
+
+const formRef = ref(null)
 
 const handleLogin = async () => {
-  try {
-    isLoading.value = true
-    let payload: any = {}
+  formRef.value?.validate(async (valid: boolean) => {
+    if (!valid) return
 
-    if (isSMSLogin.value) {
-      // 短信登录逻辑
-      payload = {
-        phone: form.value.phone,
-        code: form.value.captcha,
-        login_type: 'sms',
-      }
-    } else {
-      // 密码登录逻辑
-      payload = {
-        account: form.value.account, // 根据后端接口可能需要改为phone或保持account
+    try {
+      isLoading.value = true
+      const success = await userStore.loginbypassword({
+        account: form.value.account,
         password: form.value.password,
-        login_type: 'password',
+      })
+      if (success) {
+        ElMessage.success('登录成功')
       }
+    } catch (err: any) {
+      ElMessage.error(err.message || '登录失败')
+    } finally {
+      isLoading.value = false
     }
-
-    const response = await axios.post('/api/users/login', payload, {
-      withCredentials: true,
-    })
-
-    if (response.data.code === 200) {
-      ElMessage.success('登录成功')
-      // 存储token（根据实际返回字段调整）
-      localStorage.setItem('access_token', response.data.data.token)
-      // 跳转首页
-      router.push('/')
-    } else {
-      handleLoginError(response.data)
-    }
-  } catch (err: any) {
-    console.error('登录失败:', err)
-    if (err.response?.data) {
-      handleLoginError(err.response.data)
-    } else {
-      ElMessage.error('网络错误，请检查网络连接')
-    }
-  } finally {
-    isLoading.value = false
-  }
-}
-
-// 添加错误处理函数
-const handleLoginError = (data: any) => {
-  const errorMap: { [key: number]: string } = {
-    400: '请求参数错误',
-    401: '账号或密码错误',
-    403: '账号已被禁用',
-    404: '用户不存在',
-    429: '尝试次数过多，请稍后再试',
-    500: '服务器内部错误',
-  }
-
-  ElMessage.error(data.message || errorMap[data.code] || '登录失败')
+  })
 }
 
 // 修改微信登录函数（示例）
