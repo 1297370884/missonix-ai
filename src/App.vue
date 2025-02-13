@@ -28,6 +28,20 @@ console.log('当前路由meta信息:', route.meta)
 </script>
 
 <style>
+body {
+  margin: 0;
+  font-family:
+    Noto Sans SC,
+    SF Pro SC,
+    SF Pro Text,
+    SF Pro Icons,
+    PingFang SC,
+    Helvetica Neue,
+    Helvetica,
+    Arial,
+    sans-serif;
+}
+
 .app {
   position: relative;
 }

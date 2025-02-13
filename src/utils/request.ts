@@ -3,14 +3,19 @@ import { ElMessage } from 'element-plus'
 import router from '../router'
 import type { Result } from '../../typings'
 
-const baseUrl = '/api'
+const baseUrl = import.meta.env.VITE_API_BASEURL || '/api' // 根据实际部署环境调整
 const http = axios.create({
   baseURL: baseUrl,
   timeout: 10000,
 })
 http.interceptors.request.use((request) => {
-  const token = window.localStorage.getItem('token')
-  request.headers.set('token', token ?? '')
+  const token = localStorage.getItem('access_token')
+  if (token) {
+    // 仅保留标准Authorization头
+    request.headers.Authorization = `Bearer ${token}`
+    // 如果需要跨域携带cookie（前后端同域时自动携带）
+    request.withCredentials = true
+  }
   return request
 })
 http.interceptors.response.use(

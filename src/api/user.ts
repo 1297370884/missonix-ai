@@ -1,7 +1,7 @@
 import type {
   LoginResponse,
-  RegistrationData,
-  LoginData,
+  // RegistrationData,
+  // LoginData,
   Page,
   Result,
   QueryRequest,
@@ -40,6 +40,7 @@ export const getUserInfo = () => {
 }
 
 export interface RegisterPayload {
+  username: string
   email: string
   code: string
   password: string
@@ -55,14 +56,24 @@ export interface LoginEmailPayload {
   code: string
 }
 
+export interface ForgotPasswordPayload {
+  email: string
+  code: string
+  password: string
+}
+
 export const registerUser = (payload: RegisterPayload) => {
-  return requestWithToken<Result<RegistrationData>>('/users/register', 'POST', payload)
+  return requestWithToken<Result<User>>('/users/register/verify', 'POST', payload)
 }
 
 export const LoginPassword = (payload: LoginPasswordPayload) => {
-  return requestWithToken<Result<LoginData>>('/users/login', 'POST', payload)
+  return requestWithToken<Result<User>>('/users/login', 'POST', payload)
 }
 
 export const LoginEmail = (payload: LoginEmailPayload) => {
-  return requestWithToken<Result<LoginData>>('/users/login_by_email', 'POST', payload)
+  return requestWithToken<Result<User>>('/users/login_by_email', 'POST', payload)
+}
+
+export const ForgotPassword = (payload: ForgotPasswordPayload) => {
+  return requestWithToken<Result<User>>('/users/forgot_password_by_email', 'POST', payload)
 }

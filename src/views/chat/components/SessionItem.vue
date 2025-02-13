@@ -2,11 +2,13 @@
   <!-- 如果处于激活状态则增加 active class -->
   <div :class="['session-item', active ? 'active' : '']">
     <!-- 会话的名称 -->
-    <div class="name">{{ session.topic }}</div>
+    <div class="name">{{ session.title }}</div>
     <!-- 会话内的消息数量和最近修改的时间 -->
     <div class="count-time">
-      <div class="count">{{ session.messages ? session.messages.length : 0 }}条对话</div>
-      <div class="time">{{ session.updatedAt }}</div>
+      <div class="count">{{ session.message_count }}条对话</div>
+      <div class="time">
+        {{ dayjs(session.updatedAt).format('YYYY-MM-DD HH:mm') }}
+      </div>
     </div>
     <!-- 当鼠标放在会话上时会弹出遮罩 -->
     <div class="mask"></div>
@@ -25,8 +27,10 @@
 
 <script lang="ts" setup>
 import { CircleClose } from '@element-plus/icons-vue'
-import { ChatSession } from '../../../../typings'
+import type { ChatSession } from '../../../../typings'
 import { deleteChatSession } from '@/api/chat-session'
+import dayjs from 'dayjs'
+import { ElMessage } from 'element-plus'
 // active：用来标记当前会话是否处于选中状态
 // session：用于展示的会话信息
 const prop = defineProps<{ active: boolean; session: ChatSession }>()
@@ -35,25 +39,31 @@ const emit = defineEmits<{
   delete: [session: ChatSession]
 }>()
 // 当鼠标放到会话上时，会弹出删除图标，点击删除图标调用删除接口并发送删除事件。
-const handleDeleteSession = () => {
-  deleteChatSession([prop.session.id]).then((res) => {
-    if (res.success) {
-      // 发送删除事件
+const handleDeleteSession = async () => {
+  try {
+    const res = await deleteChatSession(prop.session.session_id)
+    if (res.code === 200) {
       emit('delete', prop.session)
+      ElMessage.success('删除成功')
     }
-  })
+  } catch (error) {
+    console.error('删除失败:', error)
+    ElMessage.error('删除会话失败')
+  }
 }
 </script>
 
 <style lang="scss" scoped>
 .session-item {
   /* 加一下padding不要让会话内容靠边界太近 */
-  padding: 12px;
+  padding: 10px;
+  margin-top: 10px;
   background-color: white;
   /* 给边界一些圆角看起来圆润一些 */
   border-radius: 10px;
   /* 固定宽度 */
   width: 250px;
+  height: 70px;
   /* 当鼠标放在会话上时改变鼠标的样式，暗示用户可以点击。目前还没做拖动的效果，以后会做。 */
   cursor: grab;
   /* 父相子绝，父元素是相对布局的情况下，子元素的绝对布局是相当于父元素绝对布局。 */

@@ -17,7 +17,7 @@
               </h4>
               <div class="banner-btns">
                 <a href="#" class="theme-btn btn-main">了解更多</a>
-                <a href="#" class="theme-btn btn-secondary">开始免费生成</a>
+                <RouterLink class="theme-btn btn-main" to="/chat">开始免费生成</RouterLink>
               </div>
             </div>
           </div>

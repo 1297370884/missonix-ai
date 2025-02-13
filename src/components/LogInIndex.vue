@@ -66,7 +66,7 @@ const form = ref({
   account: '',
   phone: '',
   password: '',
-  // captcha: '',
+  captcha: '',
 })
 
 // 添加加载状态
@@ -121,8 +121,12 @@ const toggleLoginMethod = () => {
 const formRef = ref(null)
 
 const handleLogin = async () => {
+  if (isLoading.value) return // 添加防重复提交检查
   formRef.value?.validate(async (valid: boolean) => {
-    if (!valid) return
+    if (!valid) {
+      ElMessage.warning('请正确填写登录信息')
+      return
+    }
 
     try {
       isLoading.value = true

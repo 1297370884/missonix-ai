@@ -65,7 +65,7 @@
             </ul>
             <div class="header-btns ms-5">
               <a class="theme-btn btn-no-design" href="#">中文 <i class="fa fa-angle-down"></i></a>
-              <RouterLink class="theme-btn btn-main" to="#">开始生成</RouterLink>
+              <RouterLink class="theme-btn btn-main" to="/chat">开始生成</RouterLink>
             </div>
           </div>
           <!-- navbar-collapse.// -->

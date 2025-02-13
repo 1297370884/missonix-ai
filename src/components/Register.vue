@@ -8,6 +8,7 @@
     <el-form :model="form" :rules="rules" class="register-form" ref="formRef">
       <EmailVerification
         verify-type="register"
+        v-model:username="form.username"
         v-model:email="form.email"
         v-model:code="form.code"
       />
@@ -50,10 +51,13 @@ import { ElMessage } from 'element-plus'
 import EmailVerification from '@/components/common/EmailVerification.vue'
 import type { FormRules } from 'element-plus'
 import { useUserStore } from '@/stores/user'
+import { useRouter } from 'vue-router'
+const router = useRouter()
 
 const userStore = useUserStore()
 
 const form = ref({
+  username: '',
   email: '',
   code: '',
   password: '',
@@ -79,7 +83,7 @@ const rules = ref<FormRules>({
       trigger: 'blur',
     },
   ],
-  captcha: [
+  code: [
     { required: true, message: '请输入验证码', trigger: 'blur' },
     { len: 6, message: '验证码为6位数字', trigger: 'blur' },
   ],
@@ -96,7 +100,10 @@ const rules = ref<FormRules>({
 const handleRegister = () => {
   // 验证表单
   formRef.value?.validate(async (valid: boolean) => {
-    if (!valid) return
+    if (!valid) {
+      ElMessage.warning('请正确填写注册信息')
+      return
+    }
     if (!agreement.value) {
       ElMessage.warning('请先阅读并同意服务协议')
       return
@@ -104,15 +111,17 @@ const handleRegister = () => {
 
     try {
       const success = await userStore.register({
+        username: form.value.username,
         email: form.value.email,
         code: form.value.code,
         password: form.value.password,
       })
       if (success) {
-        ElMessage.success('注册成功，即将跳转到首页')
+        ElMessage.success('注册成功')
+        router.push('/') // 新增跳转
       }
-    } catch (error) {
-      ElMessage.error('注册失败，请检查输入信息')
+    } catch (err: any) {
+      ElMessage.error(err.message || '注册失败')
     }
   })
 }

@@ -9,17 +9,9 @@
         <el-avatar v-else :src="logo" class="avatar" shape="square" />
       </div>
       <!-- 发送的消息或者回复的消息 -->
-      <div class="message">
-        <!-- 预览模式，用来展示markdown格式的消息 -->
-        <div v-if="message.content" class="message-content">
-          <span
-            v-for="(char, index) in displayedContent"
-            :key="index"
-            class="char"
-            :style="{ opacity: index < visibleChars ? 1 : 0 }"
-            >{{ char }}</span
-          >
-        </div>
+      <div :class="`message message--${message.sender}`">
+        <div v-html="renderedText"></div>
+      </div>
         <!-- 如果消息的内容为空则显示加载动画 -->
         <!-- <TextLoading v-else></TextLoading> -->
       </div>
@@ -28,21 +20,49 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, watch, computed } from 'vue'
+import { toRef, ref, watch, computed } from 'vue'
 import type { PropType } from 'vue'
 import type { ChatMessage } from '../../../../typings'
 import logo from '@/assets/picture/our-team-1.jpg'
 import TextLoading from '@/views/chat/components/TextLoading.vue'
+import { marked } from 'marked'
+import { MessageSender } from '@/services/WebSocketService'
+
+interface Props {
+  message: MessageSender;
+  avatar?: string;
+}
+
 // message：接受消息对象，展示消息内容和头像，并且根据角色调整消息位置。
 // avatar：用户头像，如果角色是 Assistant则使用 logo。
 const props = defineProps({
-  message: { type: Object as PropType<ChatMessage>, required: true },
+  message: {
+    type: Object as PropType<MessageSender>,
+    required: true,
+  },
   avatar: { type: String, default: 'https://www.jarcheng.top/images/logo.jpg' },
 })
 
-// 逐字显示逻辑
-const visibleChars = ref(0)
-const displayedContent = computed(() => props.message.content?.split('') || [])
+const emit = defineEmits<{
+  (e: 'completeText', text: string): void;
+}>();
+
+const message = toRef(props, 'message');
+const avatar = toRef(props, 'avatar');
+const currentText = ref('');
+
+watch(
+  () => [message.value.type, message.value.text] as const,
+  ([newType, newText]) => {
+    if (newType === 'end') {
+      console.log('完整信息:', newText);
+      currentText.value = newText;
+      emit('completeText', newText);
+      console.log('currentText:', currentText.value)
+    }
+  },
+  { immediate: true }
+);
 
 watch(
   () => props.message.content,
@@ -63,6 +83,56 @@ watch(
 </script>
 
 <style lang="scss" scoped>
+.message {
+  padding-left: 10px;
+  padding-right: 10px;
+  padding: 2px;
+  border-radius: 5px;
+  margin: 10px 0;
+  max-width: 70%; /* 设置最大宽度，防止消息过宽 */
+  overflow-wrap: break-word; /* 自动换行 */
+  background: #f8f8f8; /* 默认背景颜色 */
+  animation: messageTransition 0.3s ease-in-out;
+}
+
+.message--user {
+  padding-left: 20px;
+  padding-right: 20px;
+  background: #e3f2fd;
+  align-self: flex-end;
+  text-align: left;
+  margin-left: auto;
+  width: fit-content;
+}
+
+.message--ai {
+  padding-left: 20px;
+  padding-right: 10px;
+  background: #f5f5f5;
+  align-self: flex-start;
+  text-align: left;
+  margin-right: auto;
+}
+.message--system {
+  padding-left: 20px;
+  padding-right: 10px;
+  background: #f5f5f5;
+  align-self: flex-start;
+  text-align: left;
+  margin-right: auto;
+
+}
+
+@keyframes messageTransition {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 .char {
   opacity: 0;
   animation: appear 0.1s forwards;
@@ -70,19 +140,8 @@ watch(
 }
 
 @keyframes appear {
-  from {
-    opacity: 0;
-    transform: translateY(3px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.message-content {
-  white-space: pre-wrap;
-  word-break: break-word;
+  from { opacity: 0; transform: translateY(2px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 .message-row {
   display: flex;

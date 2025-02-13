@@ -46,7 +46,7 @@ const handleLogin = async () => {
 
   formRef.value.validate(async (valid: boolean) => {
     if (!valid) {
-      ElMessage.warning('请正确填写表单内容')
+      ElMessage.warning('请正确填写登录信息')
       return
     }
 
@@ -60,7 +60,7 @@ const handleLogin = async () => {
         ElMessage.success('登录成功')
       }
     } catch (err) {
-      // 错误处理已在store完成
+      ElMessage.error(err.message || '登录失败') // 补全错误提示
     }
   })
 }

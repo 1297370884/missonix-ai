@@ -1,24 +1,12 @@
 <template>
   <!-- 最外层页面于窗口同宽，使聊天面板居中 -->
   <div class="home-view">
-    <el-button v-if="!isSessionPanelVisible" class="toggle-panel-btn" @click="toggleSessionPanel">
-      <el-icon><ArrowRight /></el-icon>
-    </el-button>
     <!-- 整个聊天面板 -->
     <div class="chat-panel">
       <!-- 左侧的会话列表 -->
-      <div class="session-panel" :class="{ hidden: !isSessionPanelVisible }">
-        <div class="panel-header">
-          <div class="panel-header-left">
-            <div class="title">AI助手</div>
-            <div class="description">构建你的AI助手</div>
-          </div>
-          <div class="panel-header-right">
-            <el-button class="fold-btn" @click="toggleSessionPanel">
-              <el-icon><ArrowLeft /></el-icon>
-            </el-button>
-          </div>
-        </div>
+      <div class="session-panel">
+        <div class="title">ChatGPT助手</div>
+        <div class="description">构建你的AI助手</div>
         <div v-if="loading" class="loading-overlay">
           <el-icon class="loading-icon"><Loading /></el-icon>
           正在加载历史会话...
@@ -78,7 +66,7 @@
             </div>
             <!-- 否则正常显示标题 -->
             <div v-else class="title">{{ activeSession.title }}</div>
-            <div class="description">与AI的{{ activeSession.message_count }}条对话</div>
+            <div class="description">与ChatGPT的{{ activeSession.message_count }}条对话</div>
           </div>
           <!-- 尾部的编辑按钮 -->
           <div class="rear">
@@ -98,15 +86,14 @@
           <!-- 过渡效果 -->
           <transition-group name="list">
             <el-scrollbar class="chat-box__content">
-              <template v-for="(message, index) in wbmessages" :key="index">
+              <template v-for="(message, index) in messages" :key="index">
                 <Message :message="message" @completeText="handleCompleteText" />
               </template>
             </el-scrollbar>
-            <!-- <div class="chat-box__gradient"></div> -->
           </transition-group>
         </div>
         <!-- 监听发送事件 -->
-        <message-input @send="handleSendMessage"></message-input>
+        <InputBox @inputedText="handleInputText" :session_id="session_id" />
       </div>
     </div>
   </div>
@@ -122,7 +109,7 @@ import {
   updateSessionTitle,
 } from '@/api/chat-session'
 import SessionItem from '@/views/chat/components/SessionItem.vue'
-import { CirclePlus, Close, EditPen, Select, ArrowLeft, ArrowRight } from '@element-plus/icons-vue'
+import { CirclePlus, Close, EditPen, Select } from '@element-plus/icons-vue'
 import MessageRow from '@/views/chat/components/MessageRow.vue'
 import MessageInput from '@/views/chat/components/MessageInput.vue'
 import Message from '@/views/chat/components/Message.vue'
@@ -133,36 +120,26 @@ import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 import { useIntersectionObserver } from '@vueuse/core'
 import { ElMessage } from 'element-plus'
+import InputBox from '@/views/chat/components/InputBox.vue'
 
 import { webSocketService } from '@/services/WebSocketService'
 import { provide } from 'vue'
-
-const wbmessages = computed(() => webSocketService.messages.value)
-
-const completeMessages = ref('')
-
-const handleCompleteText = (text: string) => {
-  completeMessages.value = text
-  console.log('completeMessages', completeMessages.value)
-}
 
 // 是否连接
 const isConnecting = ref(false)
 // 连接失败状态
 const connectionError = ref('')
-
 // 使用router实现编程式路由导航
 const router = useRouter()
-
-// 页面分页相关
-// 当前页码
+// 当前会话页码
 const currentPage = ref(1)
-// 总页码
+// 总会话页码
 const totalPages = ref(0)
 // 滚动加载触发元素
 const loadMoreRef = ref<HTMLElement | null>(null)
-
+// 会话标题是否处于编辑状态
 const isEdit = ref(false)
+// 初始化 存储当前活跃的会话信息
 const activeSession = ref<ChatSession>({
   session_id: '',
   title: '',
@@ -174,21 +151,27 @@ const activeSession = ref<ChatSession>({
   user_id: '',
 })
 const sessionList = ref([] as ChatSession[])
-
 const loading = ref(false)
 const error = ref<Error | null>(null)
-
 const { userInfo } = storeToRefs(useUserStore())
-
 const messageListRef = ref<HTMLElement | null>(null)
+const messages = computed(() => webSocketService.messages.value)
 
-const isSessionPanelVisible = ref(true)
-
-const toggleSessionPanel = () => {
-  isSessionPanelVisible.value = !isSessionPanelVisible.value
+const completeMessages = ref('')
+const handleCompleteText = (text: string) => {
+  completeMessages.value = text
+  console.log('completeMessages', completeMessages.value)
 }
 
-// 使用 Intersection Observer 实现会话分页滚动加载，通过 useIntersectionObserver 监听 loadMoreRef 元素是否进入视口
+const inputedMessage = ref('')
+const handleInputText = (text: string) => {
+  inputedMessage.value = text
+  console.log('inputedMessage', inputedMessage.value)
+  activeSession.value.messages = [...activeSession.value.messages, text]
+}
+
+// 使用 Intersection Observer 实现会话分页滚动加载
+// 通过 useIntersectionObserver 监听 loadMoreRef 元素是否进入视口
 useIntersectionObserver(loadMoreRef, ([{ isIntersecting }]) => {
   if (isIntersecting && !loading.value && currentPage.value < totalPages.value) {
     currentPage.value++ // 增加页码
@@ -196,7 +179,7 @@ useIntersectionObserver(loadMoreRef, ([{ isIntersecting }]) => {
   }
 })
 
-// 优化后的加载方法
+// 首次进入界面加载方法
 const loadSessions = async (page = 1) => {
   try {
     loading.value = true
@@ -229,9 +212,11 @@ const loadSessions = async (page = 1) => {
   } finally {
     loading.value = false
     // 滚动到底部
+    scrollToBottom()
   }
 }
 
+// 挂载前
 onMounted(async () => {
   const userStore = useUserStore()
 
@@ -253,15 +238,6 @@ onMounted(async () => {
       isConnecting.value = true
       await webSocketService.connect(activeSession.value.session_id)
       ElMessage.success('实时连接已建立')
-      webSocketService.messages.value = [] // 初始化列表
-      // for (let i = 0; i< activeSession.value.messages.length; i++ )
-      for (const message of activeSession.value.messages) {
-        webSocketService.messages.value.push({
-          text: message.content,
-          sender: message.role,
-        })
-      }
-      setTimeout(scrollToBottom, 100)
     }
   } catch (err) {
     connectionError.value = '无法建立实时连接'
@@ -276,6 +252,7 @@ onBeforeUnmount(() => {
   webSocketService.disconnect()
 })
 
+// 删除会话
 const handleDeleteSession = async (deletedSession: ChatSession) => {
   try {
     // 从列表移除
@@ -295,7 +272,7 @@ const handleDeleteSession = async (deletedSession: ChatSession) => {
   }
 }
 
-// 新增会话
+// 新增会话 当用户点击“新的聊天”按钮时，创建一个新的会话
 const handleCreateSession = async () => {
   try {
     const userStore = useUserStore()
@@ -315,7 +292,7 @@ const handleCreateSession = async () => {
 
     // 3. 处理成功响应（根据实际接口返回结构调整）
     if (createRes.code === 200) {
-      // 构造完整会话对象
+      // 构造新会话对象
       const newSession = {
         session_id: createRes.data.session_id,
         user_id: createRes.data.user_id,
@@ -337,6 +314,7 @@ const handleCreateSession = async () => {
   }
 }
 
+// 更新会话标题
 const handleUpdateSession = () => {
   updateSessionTitle({
     sessionId: activeSession.value.session_id,
@@ -345,80 +323,16 @@ const handleUpdateSession = () => {
   isEdit.value = false
 }
 
-const handleSendMessage = async (message: string) => {
-  if (!activeSession.value.session_id) {
-    ElMessage.error('请先选择会话')
-    return
-  }
-
-  try {
-    // 创建用户消息对象
-    const userMessage: ChatMessage = {
-      message_id: Date.now(), // 临时ID
-      session_id: activeSession.value.session_id,
-      content: message,
-      role: 'user',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      is_deleted: false,
-    }
-
-    webSocketService.messages.value.push({
-      text: message,
-      sender: 'user',
-    })
-    webSocketService.sendMessage(message)
-  } catch (error) {
-    console.error('消息发送失败:', error)
-    ElMessage.error('消息发送失败')
-  }
-}
-
-// 监听WebSocket消息
-watch(
-  () => webSocketService.messages.value,
-  (newMessages) => {
-    newMessages.forEach((msg) => {
-      // 找到对应的AI消息占位
-      const targetMessage = activeSession.value.messages.find(
-        (m) => m.stream_id === msg.stream_id && m.role === 'assistant',
-      )
-
-      if (targetMessage) {
-        // 更新消息内容
-        targetMessage.content += msg.text
-
-        // 处理逐字显示效果
-        if (!targetMessage.visibleChars) targetMessage.visibleChars = 0
-        targetMessage.visibleChars = msg.text.length
-
-        // 标记消息完成状态
-        if (msg.is_complete) {
-          targetMessage.is_complete = true
-        }
-      }
-    })
-  },
-  () => {
-    nextTick(() => {
-      const scrollContainer = messageListRef.value?.querySelector('.el-scrollbar__wrap')
-      if (scrollContainer) {
-        scrollContainer.scrollTop = scrollContainer.scrollHeight
-      }
-    })
-  },
-  { deep: true, flush: 'post' },
-)
-
+// 自动将聊天列表滑倒底部
 const scrollToBottom = () => {
   nextTick(() => {
-    const scrollContainer = messageListRef.value?.querySelector('.el-scrollbar__wrap')
-    if (scrollContainer) {
-      scrollContainer.scrollTop = scrollContainer.scrollHeight
+    if (messageListRef.value) {
+      messageListRef.value.scrollTop = messageListRef.value.scrollHeight
     }
   })
 }
 
+// 当用户点击会话列表中的会话时，调用此方法切换到一个新的会话
 const handleSessionSwitch = async (session: ChatSession) => {
   // 如果已是当前会话则不操作
   if (session.session_id === activeSession.value.session_id) return
@@ -427,13 +341,13 @@ const handleSessionSwitch = async (session: ChatSession) => {
     activeSession.value.messages = []
     loading.value = true
 
-    webSocketService.messages.value = [] // 初始化列表
-    // 在切换会话时调用
-    webSocketService.clearMessages()
-    // 断开旧连接
+    // 断开与旧会话的 WebSocket 连接
     webSocketService.disconnect()
 
-    // 加载会话详情（包括消息）
+    // 连接新会话的WebSocket
+    await webSocketService.connect(session.session_id)
+
+    // 加载新会话的数据，并更新 activeSession 中的会话信息和消息列表
     const detail = await findChatSessionById(session.session_id)
 
     // 更新活跃会话
@@ -444,72 +358,48 @@ const handleSessionSwitch = async (session: ChatSession) => {
         visibleChars: m.content?.length || 0, // 初始化已显示字符
       })),
     }
-
-    // 连接新会话的WebSocket
-    await webSocketService.connect(session.session_id)
-
-    for (const message of activeSession.value.messages) {
-      webSocketService.messages.value.push({
-        text: message.content,
-        sender: message.role,
-      })
-    }
-    setTimeout(scrollToBottom, 100)
   } catch (err) {
     console.error('切换会话失败:', err)
     ElMessage.error('会话加载失败')
   } finally {
     loading.value = false
 
-    // 滚动到底部
+    // 滚动到消息列表的底部，确保新加载的消息可见
+    scrollToBottom()
   }
 }
 </script>
 
 <style lang="scss" scoped>
 .home-view {
-  position: relative;
   width: 100vw;
   display: flex;
-  // justify-content: center;
-
-  .toggle-panel-btn {
-    position: absolute;
-    left: 10px;
-    top: 10px;
-    z-index: 1000;
-    padding: 8px;
-    border-radius: 50%;
-  }
+  justify-content: center;
 
   .chat-panel {
-    flex: 1;
     display: flex;
-    // border-radius: 20px;
-    height: 100vh;
+    border-radius: 20px;
+    height: 80vh;
     background-color: white;
-    // box-shadow: 0 0 20px 20px rgba(black, 0.05);
-    // margin-top: 70px;
+    box-shadow: 0 0 20px 20px rgba(black, 0.05);
+    margin-top: 70px;
     position: relative;
 
     .session-panel {
       width: 300px;
-      // border-top-left-radius: 20px;
-      // border-bottom-left-radius: 20px;
+      border-top-left-radius: 20px;
+      border-bottom-left-radius: 20px;
       padding: 20px;
       position: relative;
       border-right: 1px solid rgba(black, 0.07);
-      background-color: rgb(250 250 250);
+      background-color: rgb(231, 248, 255);
       display: flex;
       flex-direction: column;
       height: 100%;
-      transition: transform 0.3s ease-in-out;
-      flex-shrink: 0;
       /* 标题 */
       .title {
         margin-top: 20px;
         font-size: 20px;
-        margin-right: auto; /* 将按钮推到最右边 */
       }
 
       /* 描述*/
@@ -517,24 +407,6 @@ const handleSessionSwitch = async (session: ChatSession) => {
         color: rgba(black, 0.7);
         font-size: 14px;
         margin-top: 10px;
-        margin-right: auto; /* 将按钮推到最右边 */
-      }
-
-      &.hidden {
-        transform: translateX(-100%);
-      }
-
-      .panel-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 0 10px;
-
-        .fold-btn {
-          padding: 6px;
-          border-radius: 50%;
-          margin-left: auto; /* 将按钮推到最右边 */
-        }
       }
 
       .session-list {
@@ -563,7 +435,7 @@ const handleSessionSwitch = async (session: ChatSession) => {
         position: absolute;
         bottom: 20px;
         left: 0;
-        background: rgb(250 250 250); // 添加背景色防止透明
+        background: rgb(231, 248, 255); // 添加背景色防止透明
         z-index: 1; // 确保按钮在滚动内容之上
         display: flex;
         /* 让内部的按钮显示在右侧 */
@@ -580,11 +452,9 @@ const handleSessionSwitch = async (session: ChatSession) => {
 
     /* 右侧消息记录面板*/
     .message-panel {
-      // width: 700px;
-      flex: 1;
+      width: 700px;
       display: flex;
       flex-direction: column;
-      transition: margin-left 0.3s ease-in-out;
 
       .header {
         padding: 20px 20px 0 20px;
@@ -619,7 +489,6 @@ const handleSessionSwitch = async (session: ChatSession) => {
       }
 
       .message-list {
-        height: 100%; // 确保容器高度正确
         flex: 1;
         padding: 15px;
         // 消息条数太多时，溢出部分滚动
@@ -636,55 +505,50 @@ const handleSessionSwitch = async (session: ChatSession) => {
           transform: translateX(30px);
         }
       }
-      .chat-box__content {
-        height: 100%;
-        padding: 10px;
-        border-radius: 4px;
-      }
-      .chat-box__gradient {
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        height: 20px;
-        background: linear-gradient(rgba(255, 255, 255, 0), rgba(255, 255, 255, 1));
-        pointer-events: none; /* 防止遮罩影响点击 */
-      }
-      .chat-box__gradient {
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        height: 20px;
-        background: linear-gradient(rgba(255, 255, 255, 0), rgba(255, 255, 255, 1));
-        pointer-events: none; /* 防止遮罩影响点击 */
-      }
-
-      .chat-box .el-scrollbar {
-        flex: 1;
-        min-height: 0; /* 重要：修复滚动容器高度问题 */
-      }
-      .el-scrollbar {
-        flex: 1;
-        min-height: 0; /* 重要：修复滚动容器高度问题 */
-        height: 100%;
-      }
-
-      .el-scrollbar__wrap {
-        overflow-x: hidden;
-        overflow-y: auto; // 确保允许垂直滚动
-        height: 100%;
-      }
-
-      .el-scrollbar__view {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        padding: 10px;
-        padding-bottom: 30px; /* 增加底部空间 */
-        min-height: 100%; /* 强制填满容器 */
-      }
     }
   }
+}
+
+.chat-box {
+  flex: 1;
+  min-height: 0;
+  border: 1px solid #ccc;
+  margin: 10px 0;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-box__content {
+  height: 100%;
+  padding: 10px;
+  border-radius: 4px;
+}
+.chat-box__gradient {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 20px;
+  background: linear-gradient(rgba(255, 255, 255, 0), rgba(255, 255, 255, 1));
+  pointer-events: none; /* 防止遮罩影响点击 */
+}
+
+.chat-box .el-scrollbar {
+  flex: 1;
+  min-height: 0; /* 重要：修复滚动容器高度问题 */
+}
+
+.el-scrollbar__wrap {
+  overflow-x: hidden;
+}
+
+.el-scrollbar__view {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px;
+  padding-bottom: 30px; /* 增加底部空间 */
+  min-height: 100%; /* 强制填满容器 */
 }
 </style>

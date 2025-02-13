@@ -89,6 +89,7 @@ const router = createRouter({
       meta: {
         hideNavbar: true,
         hideFooter: true,
+        // requiresAuth: true, // 添加认证标记
       },
     },
     // 其他路由...

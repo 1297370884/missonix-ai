@@ -3,6 +3,7 @@ import { createPinia } from 'pinia'
 // import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
+import piniaPluginPersistedstate from 'pinia-plugin-persistedstate'
 
 // 基础样式
 import 'bootstrap/dist/css/bootstrap.min.css'
@@ -32,14 +33,46 @@ import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
 import { MdPreview } from 'md-editor-v3'
 import 'md-editor-v3/lib/style.css'
+// import { useUserStore } from '@/stores/user'
 
 const app = createApp(App)
 
 // 在应用配置中添加
 app.use(ElementPlus)
 
-app.use(createPinia())
+const pinia = createPinia()
+pinia.use(piniaPluginPersistedstate)
+app.use(pinia)
+
 app.use(router)
+
+// router.beforeEach(async (to) => {
+//   const userStore = useUserStore()
+//   const authWhitelist = ['/login', '/register', '/forgot']
+
+//   // 白名单直接放行
+//   if (authWhitelist.includes(to.path)) return true
+
+//   try {
+//     // 已登录用户访问登录页时重定向
+//     if (to.path === '/login' && userStore.isLoggedIn) {
+//       return '/'
+//     }
+
+//     // 需要认证的页面处理
+//     if (to.meta.requiresAuth) {
+//       if (!userStore.isInitialized) {
+//         await userStore.initialize()
+//       }
+//       return userStore.isLoggedIn ? true : '/login'
+//     }
+
+//     return true
+//   } catch (error) {
+//     console.error('路由守卫错误:', error)
+//     return '/login'
+//   }
+// })
 
 for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
   app.component(key, component)

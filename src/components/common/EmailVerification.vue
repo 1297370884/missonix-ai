@@ -2,6 +2,9 @@
   <div class="email-verification">
     <el-form :model="form" :rules="rules">
       <!-- 邮箱输入 -->
+      <el-form-item prop="username">
+        <el-input v-model="form.username" type="text" placeholder="请输入用户名" />
+      </el-form-item>
       <el-form-item prop="email">
         <el-input v-model="form.email" placeholder="请输入邮箱地址" />
         <div v-if="errorMessage" class="error-message">
@@ -55,13 +58,15 @@ const props = defineProps({
     type: String,
     default: 'login',
   },
+  username: String,
   email: String,
   code: String,
 })
 
-const emit = defineEmits(['update:email', 'update:code', 'submit'])
+const emit = defineEmits(['update:username', 'update:email', 'update:code', 'submit'])
 
 const form = ref({
+  username: '',
   email: '',
   code: '',
 })
@@ -79,6 +84,7 @@ const isEmailValid = computed(() => {
 })
 
 const rules = {
+  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
   email: [
     { required: true, message: '请输入邮箱地址', trigger: 'blur' },
     {
@@ -123,7 +129,7 @@ const sendCaptcha = async () => {
     try {
       const response = await axios.post(
         '/api/users/register/precheck',
-        { email: form.value.email },
+        { username: form.value.username, email: form.value.email },
         { withCredentials: true },
       )
 
@@ -171,6 +177,13 @@ const onCaptchaSuccess = () => {
 const onCaptchaFail = () => {
   captchaResolve(false)
 }
+
+watch(
+  () => form.value.username,
+  (newVal) => {
+    emit('update:username', newVal)
+  },
+)
 
 watch(
   () => form.value.email,

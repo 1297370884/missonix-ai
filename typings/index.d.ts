@@ -1,16 +1,20 @@
 export interface ChatMessage extends BaseEntity {
+  messg_id: int
+  type: string
+  stream_id: string
+  session_id: string
   content: string
   role: string
   session: ChatSession
-  validStatus: 'VALID' | 'INVALID'
+  type?: string
 }
 
 export interface ChatSession extends BaseEntity {
-  topic: string
-  statistic: Statistic
+  user_id: string
+  session_id: string
+  title: string
+  message_count: number
   messages: ChatMessage[]
-  createdBy: User
-  validStatus: 'VALID' | 'INVALID'
 }
 export interface Statistic {
   chatCount: number
@@ -29,15 +33,18 @@ export interface ChatConfig extends BaseEntity {
 }
 
 export interface User extends BaseEntity {
-  avatar: string
-  nickname: string
+  user_id: string
+  username: string
   email: string
-  password: string
+  access_token: string
+  is_admin: boolean
+  is_active: boolean
+  ip_address: string
+  avatar?: string
 }
 export class LoginResponse {
-  tokenName: string
-  tokenValue: string
-  loginId: string
+  email: string
+  ip_address: string
 }
 
 export type EditMode = 'CREATE' | 'EDIT'
@@ -65,10 +72,9 @@ export interface Page<T> {
 }
 
 export interface BaseEntity {
-  id: string
+  // id: string
   updatedAt: string
   createdAt: string
-  validStatus: 'VALID' | 'INVALID'
 }
 
 // 通用格式 以注册返回为基础
@@ -80,7 +86,6 @@ export interface Result<T> {
 
 export interface RegistrationData {
   email: string
-  refresh_token: string
   ip_address: string
 }
 
